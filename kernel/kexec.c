@@ -2045,6 +2045,10 @@ MemoryAllocation* efi_mem_allocation_build_chunk(
         mem_map->num_pages = NumberOfPages;
         mem_map->attribute = EFI_DEFAULT_MEM_ATTRIBUTES;
 
+        if (MemoryType == EfiRuntimeServicesCode ||
+            MemoryType == EfiRuntimeServicesData)
+                mem_map->attribute |= EFI_MEMORY_RUNTIME;
+
         return mem_alloc;
 }
 
@@ -2191,6 +2195,10 @@ void efi_register_phys_mem_allocation( EFI_MEMORY_TYPE       MemoryType,
         DebugMSG( "Registering %lld pages of type %s @ 0x%lx",
                    NumberOfPages, get_efi_mem_type_str( MemoryType ),
                    phys_addr );
+
+        /* We increment the version of mem_map of every call to
+         * efi_register_new_phys_mem_allocation */
+        efi_mem_map_epoch++;
 
         mem_alloc = efi_find_mem_allocation( phys_addr );
 
@@ -3462,6 +3470,8 @@ static void hook_boot_services( efi_system_table_t *systab )
         systab->stderr         = 0xdeadbeefcafe0004;
         systab->runtime        = (void*)efi.runtime;
 
+        DebugMSG( "systab->runtime->set_virtual_address_map @ %px",
+                  systab->runtime->set_virtual_address_map );
         efi_setup_configuration_tables(systab);
         efi_print_memory_map();
 
