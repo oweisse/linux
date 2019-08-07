@@ -18,6 +18,7 @@
 #include <linux/efi.h>
 #include <linux/io.h>
 #include <linux/mman.h>
+#include <linux/fb.h>
 #include <asm/desc.h>
 #include "kexec_internal.h"
 
@@ -320,6 +321,7 @@ typedef unsigned char       BOOLEAN;
 typedef int32_t             INT32;
 /* typedef uint32_t            ULONG; */
 typedef unsigned char       UCHAR;
+typedef efi_physical_addr_t EFI_PHYSICAL_ADDRESS;
 
 //
 // Toggle state
@@ -1572,6 +1574,8 @@ typedef struct {
 #define BOOT_PARTITION_2_HANDLE (BOOT_RAW_DEVICE_HANDLE + 2)
 #define BOOT_PARTITION_3_HANDLE (BOOT_RAW_DEVICE_HANDLE + 3)
 
+#define GRAPHICS_HANDLE         ((EFI_HANDLE)0xCAFEBAB0)
+
 DeviceData devices[4] = {
         { ( EFI_HANDLE )BOOT_RAW_DEVICE_HANDLE,
           sizeof( windows_raw_hd_device_path ),
@@ -1719,6 +1723,217 @@ efi_status_t efi_handle_protocol_LoadedImage( void* handle, void** interface )
         DebugMSG( "ImageDataType    = 0x%x;", windows_loaded_image.ImageDataType );
         DebugMSG( "Unload           = %px;", windows_loaded_image.Unload);
 
+        return EFI_SUCCESS;
+}
+
+__attribute__((ms_abi)) efi_status_t efi_hook_AllocatePool(
+                        EFI_MEMORY_TYPE pool_type,
+                        unsigned long  size,
+                        void           **buffer );
+
+void efi_setup_11_mapping_physical_addr( unsigned long start,
+                                         unsigned long end );
+void Dump_fb_bitfield( struct fb_bitfield * bf, char* title )
+{
+        DebugMSG( "%s: offset = %d, length = %d, msg_right = %d",
+                  title, bf->offset, bf->length, bf->msb_right );
+}
+
+typedef struct {
+  UINT32            RedMask;
+  UINT32            GreenMask;
+  UINT32            BlueMask;
+  UINT32            ReservedMask;
+} EFI_PIXEL_BITMASK;
+
+typedef enum {
+  PixelRedGreenBlueReserved8BitPerColor,
+  PixelBlueGreenRedReserved8BitPerColor,
+  PixelBitMask,
+  PixelBltOnly,
+  PixelFormatMax
+} EFI_GRAPHICS_PIXEL_FORMAT;
+
+
+typedef struct {
+  UINT32                     Version;
+  UINT32                     HorizontalResolution;
+  UINT32                     VerticalResolution;
+  EFI_GRAPHICS_PIXEL_FORMAT  PixelFormat;
+  EFI_PIXEL_BITMASK          PixelInformation;
+  UINT32                     PixelsPerScanLine;
+} EFI_GRAPHICS_OUTPUT_MODE_INFORMATION;
+
+typedef struct {
+  UINT32                                 MaxMode;
+  UINT32                                 Mode;
+  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION   *Info;
+  UINTN                                  SizeOfInfo;
+  EFI_PHYSICAL_ADDRESS                   FrameBufferBase;
+  UINTN                                  FrameBufferSize;
+} EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE;
+
+typedef struct {
+  void* QueryMode;
+  void* SetMode;
+  void* Blt;
+  EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE        *Mode;
+}EFI_GRAPHICS_OUTPUT_PROTOCOL ;
+
+EFI_GRAPHICS_OUTPUT_MODE_INFORMATION graphics_info   = {0};
+EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE    graphics_mode   = {0};
+EFI_GRAPHICS_OUTPUT_PROTOCOL         graphics_output = {0};
+EFI_GRAPHICS_OUTPUT_PROTOCOL*        graphics_output_remapped = NULL;
+
+void efi_hook_query_mode(void)
+{
+        DebugMSG( "Unexpected call!" );
+        while (1) {}
+}
+
+void efi_hook_set_mode(void)
+{
+        DebugMSG( "Unexpected call!" );
+        while (1) {}
+}
+
+void efi_hook_blt(void)
+{
+        DebugMSG( "Unexpected call!" );
+        while (1) {}
+}
+
+void efi_dump_screen_info(struct fb_var_screeninfo *fvsi,
+                           struct fb_fix_screeninfo *ffsi )
+{
+        DebugMSG( "xres            = %d", fvsi->xres );
+        DebugMSG( "yres            = %d", fvsi->yres );
+        DebugMSG( "xres_virtual    = %d", fvsi->xres_virtual );
+        DebugMSG( "yres_virtual    = %d", fvsi->yres_virtual );
+        DebugMSG( "xoffset         = %d", fvsi->xoffset );
+        DebugMSG( "yoffset         = %d", fvsi->yoffset );
+        DebugMSG( "bits_per_pixel  = %d", fvsi->bits_per_pixel );
+        DebugMSG( "grayscale       = %d", fvsi->grayscale );
+        Dump_fb_bitfield( &fvsi->red,   "Red" );
+        Dump_fb_bitfield( &fvsi->green, "Green" );
+        Dump_fb_bitfield( &fvsi->blue,  "Blue" );
+        Dump_fb_bitfield( &fvsi->transp,"transp" );
+
+        DebugMSG( "id = %s", ffsi->id );
+        DebugMSG( "smmio_start  @ 0x%lx",  ffsi->smem_start );
+        DebugMSG( "smmio_len    = %d",    ffsi->smem_len );
+        DebugMSG( "mmio_start   @ 0x%lx",  ffsi->mmio_start );
+        DebugMSG( "mmio_len     = %d",    ffsi->mmio_len );
+        DebugMSG( "line_length  = %d",    ffsi->line_length );
+        DebugMSG( "type         = 0x%x",  ffsi->type );
+        DebugMSG( "visual       = 0x%x",  ffsi->visual );
+}
+
+void efi_demonstrate_graphics(struct fb_var_screeninfo *fvsi,
+                              struct fb_fix_screeninfo *ffsi )
+{
+        /* ffsi->smem_start is now addressable, since it's mapped 1:1 */
+        uint8_t* frame_buffer = (uint8_t*)ffsi->smem_start;
+        int x,y;
+
+        for( y = 0; y < fvsi->yres; y++ ) {
+                for( x = 0; x < fvsi->xres; x++ ) {
+                        size_t offset = y*ffsi->line_length +
+                                        ( x * (fvsi->bits_per_pixel / 8) );
+                        uint32_t* pixel = (uint32_t*)&frame_buffer[offset];
+                        *pixel = 0;
+                        if (x / 100 % 2 == 0)
+                                *pixel |= 255 << fvsi->red.offset;
+                        if (x / 100 % 3 == 0)
+                                *pixel |= 255 << fvsi->green.offset;
+                        if (x / 100 % 4 == 0)
+                                *pixel |= 255 << fvsi->blue.offset;
+                }
+        }
+}
+
+void efi_initialize_graphics(void)
+{
+        struct file *fb_file            = NULL;
+        int flags                       = O_RDWR;
+        int mode                        = 0;
+        struct fb_var_screeninfo *fvsi  = NULL;
+        struct fb_fix_screeninfo *ffsi  = NULL;
+        int ret                         = 0;
+        uint8_t* frame_buffer           = NULL;
+
+        /* We need to allocate fvsi and ffsi in a "user space" address to be
+         * used later with ioctl */
+        efi_hook_AllocatePool( EfiRuntimeServicesData,
+                               NUM_PAGES( sizeof( struct fb_var_screeninfo ) +
+                                          sizeof( struct fb_fix_screeninfo )),
+                               (void**)&fvsi );
+        memset( fvsi, 0, sizeof( struct fb_var_screeninfo ) );
+
+        ffsi = (void*)((uint8_t*)fvsi + sizeof( struct fb_fix_screeninfo ));
+        memset( ffsi, 0, sizeof( struct fb_fix_screeninfo ) );
+
+        DebugMSG( "fvsi = %px, ffsi = %px", fvsi, ffsi );
+
+        /* We open the frame buffer device, then call IOCTL to get its info */
+        fb_file = filp_open("/dev/fb0", flags, mode);
+        DebugMSG( "fb_file = %px", fb_file );
+
+        ret = vfs_ioctl( fb_file, FBIOGET_VSCREENINFO, (unsigned long)fvsi );
+        DebugMSG( "ioctl FBIOGET_VSCREENINFO ret = %d", ret );
+
+        ret = vfs_ioctl( fb_file, FBIOGET_FSCREENINFO, (unsigned long)ffsi );
+        DebugMSG( "ioctl FBIOGET_FSCREENINFO ret = %d", ret );
+
+        efi_dump_screen_info( fvsi, ffsi );
+
+        /* We need to map the frame buffer into 1:1 virt-phys memory */
+        efi_setup_11_mapping_physical_addr( ffsi->smem_start,
+                                            ffsi->smem_start + ffsi->smem_len );
+
+        efi_demonstrate_graphics( fvsi, ffsi );
+
+        /* Now setup the required EFI structures so we can reply to Windows
+         * loader. */
+        graphics_info.Version = 0;
+        graphics_info.HorizontalResolution = fvsi->xres;
+        graphics_info.VerticalResolution   = fvsi->yres;
+        graphics_info.PixelFormat = PixelBlueGreenRedReserved8BitPerColor;
+        /* graphics_info.PixelInformation is NOT needed */
+        graphics_info.PixelsPerScanLine = ffsi->line_length /
+                                          (fvsi->bits_per_pixel / 8) ;
+
+        frame_buffer             = (uint8_t*)ffsi->smem_start;
+        graphics_mode.MaxMode    = 1;
+        graphics_mode.Mode       = 0;
+        graphics_mode.Info       = efi_map_11_and_register_allocation(
+                                      &graphics_info, sizeof( graphics_info ) );
+        graphics_mode.SizeOfInfo = sizeof( graphics_info );
+        graphics_mode.FrameBufferBase = (EFI_PHYSICAL_ADDRESS)frame_buffer;
+        graphics_mode.FrameBufferSize = ffsi->smem_len;
+
+        graphics_output.QueryMode = efi_hook_query_mode;
+        graphics_output.SetMode   = efi_hook_set_mode;
+        graphics_output.Blt       = efi_hook_blt;
+        graphics_output.Mode      = efi_map_11_and_register_allocation(
+                                     &graphics_mode, sizeof( graphics_mode ) );
+
+        graphics_output_remapped = efi_map_11_and_register_allocation(
+                                  &graphics_output, sizeof( graphics_output ) );
+
+        DebugMSG( "graphics_output_remapped @ %px", graphics_output_remapped );
+}
+
+efi_status_t efi_handle_protocol_graphics( void** interface )
+{
+        DebugMSG( "interface = %px", interface );
+
+        if (graphics_output_remapped == NULL)
+                efi_initialize_graphics();
+
+        *interface = graphics_output_remapped;
+
+        DebugMSG( "*interface = %px", *interface );
         return EFI_SUCCESS;
 }
 
@@ -2515,7 +2730,8 @@ __attribute__((ms_abi)) efi_status_t efi_hook_AllocatePages(
 
         if ( MemoryType != EfiLoaderData         &&
              MemoryType != EfiConventionalMemory &&
-             MemoryType != EfiLoaderCode
+             MemoryType != EfiLoaderCode         &&
+             MemoryType != EfiRuntimeServicesData
              ) {
                 DebugMSG( "Unsupproted MemoryType 0x%x", MemoryType );
                 return EFI_UNSUPPORTED;
@@ -2638,6 +2854,18 @@ __attribute__((ms_abi)) efi_status_t efi_hook_HandleProtocol( void* handle,
         DebugMSG( "handle = 0x%px guid = %s: %s",
                    handle, protocolName, get_GUID_str( guid ) );
 
+        if (handle == GRAPHICS_HANDLE) {
+                /* When we get the GRAPHICS_HANDLE we may get different types
+                 * protocols. However, we don't support
+                 * gEfiEdidActiveProtocolGuid */
+                if (strcmp (protocolName, "gEfiEdidActiveProtocolGuid") == 0) {
+                        DebugMSG( "Handle belongs to graphics, but received "
+                                  "incorrect protocol" );
+                        return EFI_UNSUPPORTED;
+                }
+
+                return efi_handle_protocol_graphics ( interface );
+        }
         if (strcmp (protocolName, "gEfiLoadedImageProtocolGuid") == 0) {
                 return efi_handle_protocol_LoadedImage( handle, interface );
         }
@@ -2681,24 +2909,37 @@ __attribute__((ms_abi)) efi_status_t efi_hook_LocateHandle(
                   SearchType, protocol_name,
                   get_GUID_str( Protocol ), *BufferSize, Buffer );
 
-        if (strcmp (protocol_name, "gEfiBlockIoProtocolGuid") != 0 ) {
-                DebugMSG( "Unsupported protocol" );
-                return EFI_NOT_FOUND;
+        if (strcmp (protocol_name, "gEfiBlockIoProtocolGuid") == 0 ) {
+                if (*BufferSize < sizeof( EFI_HANDLE ) * NUM_DEVICES) {
+                       *BufferSize = sizeof( EFI_HANDLE ) * NUM_DEVICES;
+                       return EFI_BUFFER_TOO_SMALL;
+                }
+
+                *BufferSize = sizeof( EFI_HANDLE ) * NUM_DEVICES;
+
+                for (i = 0; i < NUM_DEVICES; i++) {
+                       Buffer[i] = devices[i].handle;
+                       DebugMSG( "Adding devices[%d].handle = %px", i, Buffer[i] );
+                }
+
+                return EFI_SUCCESS;
+        }
+        // else
+        if (strcmp (protocol_name, "gEfiGraphicsOutputProtocolGuid") == 0 ) {
+                if (*BufferSize < sizeof( EFI_HANDLE )) {
+                       *BufferSize = sizeof( EFI_HANDLE );
+                       return EFI_BUFFER_TOO_SMALL;
+                }
+
+                *BufferSize = sizeof( EFI_HANDLE );
+                Buffer[0] = GRAPHICS_HANDLE;
+                DebugMSG( "Graphics handle = %px", Buffer[0] );
+
+                return EFI_SUCCESS;
         }
 
-        if (*BufferSize < sizeof( EFI_HANDLE ) * NUM_DEVICES) {
-               *BufferSize = sizeof( EFI_HANDLE ) * NUM_DEVICES;
-               return EFI_BUFFER_TOO_SMALL;
-        }
-
-        *BufferSize = sizeof( EFI_HANDLE ) * NUM_DEVICES;
-
-        for (i = 0; i < NUM_DEVICES; i++) {
-               Buffer[i] = devices[i].handle;
-               DebugMSG( "Adding devices[%d].handle = %px", i, Buffer[i] );
-        }
-
-        return EFI_SUCCESS;
+        DebugMSG( "Unsupported protocol" );
+        return EFI_NOT_FOUND;
 }
 
 __attribute__((ms_abi)) efi_status_t efi_hook_LocateDevicePath(void)
