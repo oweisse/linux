@@ -1859,6 +1859,9 @@ __attribute__((ms_abi)) efi_status_t efi_hook_AllocatePages(
         if ( Type == AllocateAddress ) {
                 /* We reassign the existing physical address to a new vritual
                  * address. */
+                /* TODO: We should verify that it is OK to give away this
+                 * address. As of now we are taking a leap of faith that giving
+                 * away the requested physical address will cause no harm. */
                 void* allocation =
                       memremap( *Memory, NumberOfPages*PAGE_SIZE, MEMREMAP_WB );
                 DebugMSG( "Allocated %px --> 0x%llx", allocation,
