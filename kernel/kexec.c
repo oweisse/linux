@@ -2108,8 +2108,11 @@ __attribute__((ms_abi)) efi_status_t efi_hook_UnloadImage(void)
 
 __attribute__((ms_abi)) efi_status_t efi_hook_ExitBootServices(void)
 {
+         /* TODO: When this ExitBootServices is called we should gracefully shut
+          * down linux. This shoudl be done similarly to how kexec shuts down
+          * the existing kernel.
+          */
          DebugMSG( "Returning SUCCESS" );
-        /* while(1) {} */
          return EFI_SUCCESS;
 }
 
