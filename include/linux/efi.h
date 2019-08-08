@@ -1773,4 +1773,23 @@ struct linux_efi_memreserve {
 #define EFI_MEMRESERVE_COUNT(size) (((size) - sizeof(struct linux_efi_memreserve)) \
 	/ sizeof(((struct linux_efi_memreserve *)0)->entry[0]))
 
+ /* Basical data type definitions introduced in UEFI. */
+typedef struct {
+        uint32_t  Data1;
+        uint16_t  Data2;
+        uint16_t  Data3;
+        uint8_t   Data4[8];
+} EFI_GUID;
+
+typedef struct {
+        EFI_GUID Guid;
+        char*  Name;
+} EFI_GUID_NAME;
+
+extern EFI_GUID_NAME GuidMappings[];
+
+int32_t CompareGuid (EFI_GUID *Guid1, EFI_GUID *Guid2);
+char* get_GUID_str( EFI_GUID* guid );
+char* GetGuidName( EFI_GUID *Protocol );
+
 #endif /* _LINUX_EFI_H */
