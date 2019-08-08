@@ -121,12 +121,12 @@ do {                                      \
                 outb((int)*str++, 0x3f8); \
 } while(0)
 
+static char DebugMSG_buffer[1024];
 #define DebugMSG( fmt, ... ) \
 do { \
-        char buffer[1024];                                 \
-        sprintf( buffer, "### %s:%d; " fmt "\n",           \
+        sprintf( DebugMSG_buffer, "### %s:%d; " fmt "\n",  \
                  __FUNCTION__, __LINE__, ## __VA_ARGS__ ); \
-        InternalSerialPuts( buffer );                      \
+        InternalSerialPuts( DebugMSG_buffer );             \
 }  while (0)
 
 
