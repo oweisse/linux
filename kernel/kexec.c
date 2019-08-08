@@ -134,8 +134,7 @@ do { \
 void DumpBuffer( char* title, uint8_t *buff, unsigned long size )
 {
         unsigned long i              = 0;
-        char          output[256]    = {0};
-        char          *currentOutput = output;
+        char          *currentOutput = DebugMSG_buffer;
 
         printk( KERN_ERR "%s (%ld bytes @ 0x%px)\n", title, size, buff );
 
@@ -143,8 +142,8 @@ void DumpBuffer( char* title, uint8_t *buff, unsigned long size )
         for( i = 0; i < size; i++ ) {
                 currentOutput += sprintf( currentOutput, "%02X ", buff[i] );
                 if( (i+1) % 8 == 0 ) {
-                        printk( KERN_ERR  "%s\n", output);
-                        currentOutput = output;
+                        printk( KERN_ERR  "%s\n", DebugMSG_buffer);
+                        currentOutput = DebugMSG_buffer;
                         *currentOutput = '\0';
 
                         if( i+1 < size )
@@ -153,7 +152,7 @@ void DumpBuffer( char* title, uint8_t *buff, unsigned long size )
         }
 
         if( i % 8 != 0 )
-                printk( KERN_ERR  "%s\n", output);
+                printk( KERN_ERR  "%s\n", DebugMSG_buffer);
 
         printk( KERN_ERR  "\n");
 }
