@@ -1422,27 +1422,6 @@ void efi_register_new_phys_mem_allocation( EFI_MEMORY_TYPE       MemoryType,
         MemoryAllocation *next_alloc   = NULL;
         EFI_MEMORY_DESCRIPTOR *mem_map = NULL;
 
-/*         EFI_MEMORY_DESCRIPTOR *mem_map   = NULL; */
-/*         MemoryAllocation      *mem_alloc = NULL; */
-
-/*         mem_alloc = kmalloc( sizeof(MemoryAllocation), */
-/*                                                     GFP_KERNEL ); */
-/*         BUG_ON( mem_alloc == NULL ); */
-
-/*         /1* TODO: Search if the memory address already exists in */
-/*          * &efi_memory_mappings. If so, use that mapping. *1/ */
-
-/*         mem_map = &mem_alloc->mem_descriptor; */
-/*         INIT_LIST_HEAD( &mem_alloc->list ); */
-
-/*         memset( mem_map, 0, sizeof( *mem_map ) ); */
-/*         mem_map->type      = MemoryType; */
-/*         mem_map->pad       = 0; */
-/*         mem_map->phys_addr = phys_addr; */
-/*         mem_map->virt_addr = 0;  // Similar to EDK-II code */
-/*         mem_map->num_pages = NumberOfPages; */
-/*         mem_map->attribute = EFI_DEFAULT_MEM_ATTRIBUTES; */
-
         if (list_empty(&efi_memory_mappings)) {
                 list_add_tail( &cur_alloc->list, &efi_memory_mappings);
                 goto out;
