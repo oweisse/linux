@@ -597,7 +597,7 @@ REVERSED_LOAD_OPTIONS windows_load_options =  {
 
 /* All device paths must end in this constant "device" node
  * See ch. 9.3 in
- * https:*uefi.org/sites/default/files/resources/UEFI%20Spec%202_6.pdf */
+ * https://uefi.org/sites/default/files/resources/UEFI%20Spec%202_6.pdf */
 EFI_DEVICE_PATH_PROTOCOL end_device_path_node = {
         .Type     = 0x7F,
         .SubType  = 0xFF,
