@@ -1816,8 +1816,6 @@ __attribute__((ms_abi)) efi_status_t efi_hook_AllocatePool(
         DebugMSG( "pool_type = 0x%x (%s), size = 0x%lx",
                   pool_type, get_efi_mem_type_str( pool_type ), size );
 
-        /* TODO: search for free memory which is EfiConventionalMemory, instead
-         * of always allocating new kernel memory */
         allocation = kmalloc( size, GFP_KERNEL | GFP_DMA );
         if (allocation == NULL)
                 return EFI_OUT_OF_RESOURCES;
