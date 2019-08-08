@@ -1119,7 +1119,7 @@ efi_status_t efi_handle_protocol_BlockIO( void* handle, void** interface )
         int device_id                   = get_device_id( handle );
         EFI_BLOCK_IO_PROTOCOL* block_io = NULL;
         char device_path_str[64]        = {0};
-        int flags                       = O_RDWR;
+        int flags                       = O_RDWR | O_SYNC;
         int mode                        = 0;
 
         DebugMSG( "handle = %px", handle );
