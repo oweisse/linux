@@ -882,6 +882,12 @@ efi_status_t efi_handle_protocol_LoadedImage( void* handle, void** interface )
 
         DebugMSG( "Called" );
 
+        /* Inspecting a normal real run of Windows loading with EDK-II reveals
+         * that the load options contain the following string.
+         * Also see GUID_WINDOWS_BOOTMGR in
+         * https://www.geoffchappell.com/notes/windows/boot/bcd/objects.htm
+         * and in ReacOS (https://github.com/reactos) see
+         * boot/environ/app/bootmgr/bootmgr.c */
         efi_set_wstring_from_ascii( windows_load_options.option,
                                     "BCDOBJECT={9dea862c-5cdd-4e70-acc1-f32b344d4795}",
                                     sizeof( windows_load_options.option ) );
