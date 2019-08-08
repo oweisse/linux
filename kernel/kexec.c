@@ -606,6 +606,8 @@ EFI_DEVICE_PATH_PROTOCOL end_device_path_node = {
 
 EFI_DEVICE_PATH_PROTOCOL* creat_windows_loader_device(void)
 {
+        /* TODO: The image file path should be passed along from user space. We
+         * hard code it here. */
         const char* windows_loader_bootmg_file          =
                         "\\EFI\\Microsoft\\Boot\\bootmgfw.efi";
         size_t sizeof_bootmg_file_path_as_wstring       =
@@ -643,6 +645,8 @@ EFI_DEVICE_PATH_PROTOCOL* creat_windows_loader_device(void)
 
 /* Below are mock devices to be used with OpenProtocol, LocateProtocol, etc.
  * They are all taken from a normal Windows EFI boot we logged. */
+/* TODO: see TODO in efi_hook_LocateHandle. We should generate the device paths
+ * on the fly. Here they are hardcoded based on our SPECIFIC disk image. */
 
 /* This device path is the the raw hard drive.
    It contains just PciRoot(0x0)/Pci(0x4,0x0)/Scsi(0x1,0x0) */
@@ -2031,6 +2035,10 @@ __attribute__((ms_abi)) efi_status_t efi_hook_LocateHandle(
                   get_GUID_str( Protocol ), *BufferSize, Buffer );
 
         if (strcmp (protocol_name, "gEfiBlockIoProtocolGuid") == 0 ) {
+                /* TODO: We should analize the real hard drive and return
+                 * handles according to the actual partitions that exist on it.
+                 * the current "devices" array is hard coding of the partitions
+                 * which exist in our disk image. */
                 if (*BufferSize < sizeof( EFI_HANDLE ) * NUM_DEVICES) {
                        *BufferSize = sizeof( EFI_HANDLE ) * NUM_DEVICES;
                        return EFI_BUFFER_TOO_SMALL;
