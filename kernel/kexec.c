@@ -2477,7 +2477,7 @@ void print_e820_memmap(void)
         for (i = 0; i < map->nr_entries; i++) {
                 struct e820_entry *entry = &map->entries[i];
                 char *type_str = "<unknown>";
-                if (entry->type < 13)
+                if (entry->type < ARRAY_SIZE(e820_types))
                         type_str = e820_types[entry->type];
                 if (entry->type == E820_TYPE_RESERVED_KERN )
                         type_str = "E820_RESERVED_KERN";
