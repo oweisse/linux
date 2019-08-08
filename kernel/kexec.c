@@ -2140,6 +2140,23 @@ __attribute__((ms_abi)) efi_status_t efi_hook_SetWatchdogTimer( UINTN    Timeout
 
         /* It's Ok to ignore this call. See
          * https://uefi.org/sites/default/files/resources/UEFI%20Spec%202_6.pdf
+         * From the UEFI spec version 2.6 January, 2016:
+         * The SetWatchdogTimer() function sets the system’s watchdog timer.
+         * If the watchdog timer expires, the event is logged by the firmware.
+         * The system may then either reset with the Runtime Service
+         * ResetSystem(), or perform a platform specific action that must
+         * eventually cause the platform to be reset. The watchdog timer is
+         * armed before the firmware's boot manager invokes an EFI boot option.
+         * The watchdog must be set to a period of 5 minutes. The EFI Image may
+         * reset or disable the watchdog timer as needed. If control is
+         * returned to the firmware's boot manager, the watchdog timer must be
+         * disabled. The watchdog timer is only used during boot services. On
+         * successful completion of EFI_BOOT_SERVICES.ExitBootServices() the
+         * watchdog timer is disabled.
+         *
+         * Basically, the watchdog is intended to make sure the system reboots
+         * in case the loader is stuck. Observing the logs after booting Windows
+         * 2019 we see that Timeout = 0, WatchdogCode = 0x0, DataSize = 0.
          */
         return EFI_SUCCESS;
 }
