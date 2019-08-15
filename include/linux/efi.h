@@ -1773,4 +1773,361 @@ struct linux_efi_memreserve {
 #define EFI_MEMRESERVE_COUNT(size) (((size) - sizeof(struct linux_efi_memreserve)) \
 	/ sizeof(((struct linux_efi_memreserve *)0)->entry[0]))
 
+ /* Basical data type definitions introduced in UEFI. */
+typedef struct {
+        uint32_t  Data1;
+        uint16_t  Data2;
+        uint16_t  Data3;
+        uint8_t   Data4[8];
+} EFI_GUID;
+
+typedef struct {
+        EFI_GUID Guid;
+        char*  Name;
+} EFI_GUID_NAME;
+
+extern EFI_GUID_NAME GuidMappings[];
+
+int32_t CompareGuid (EFI_GUID *Guid1, EFI_GUID *Guid2);
+char* get_GUID_str( EFI_GUID* guid );
+char* GetGuidName( EFI_GUID *Protocol );
+
+/*
+ * EFI types definitions: */
+
+typedef void*               EFI_HANDLE;
+typedef void*               EFI_IMAGE_UNLOAD;
+typedef void                VOID;
+typedef uint8_t             UINT8;
+typedef uint16_t            UINT16;
+typedef uint32_t            UINT32;
+typedef uint64_t            UINT64;
+typedef uint64_t            UINTN;
+typedef char                CHAR8;
+typedef efi_system_table_t  EFI_SYSTEM_TABLE;
+typedef efi_char16_t        CHAR16;
+typedef UINT64              EFI_LBA;
+typedef unsigned char       BOOLEAN;
+typedef int32_t             INT32;
+/* typedef uint32_t            ULONG; */
+typedef unsigned char       UCHAR;
+typedef efi_physical_addr_t EFI_PHYSICAL_ADDRESS;
+
+//
+// Toggle state
+//
+#define EFI_TOGGLE_STATE_VALID    0x80
+#define EFI_KEY_STATE_EXPOSED     0x40
+#define EFI_SCROLL_LOCK_ACTIVE    0x01
+#define EFI_NUM_LOCK_ACTIVE       0x02
+#define EFI_CAPS_LOCK_ACTIVE      0x04
+
+///
+/// EFI_KEY_TOGGLE_STATE. The toggle states are defined.
+/// They are: EFI_TOGGLE_STATE_VALID, EFI_SCROLL_LOCK_ACTIVE
+/// EFI_NUM_LOCK_ACTIVE, EFI_CAPS_LOCK_ACTIVE
+///
+typedef UINT8 EFI_KEY_TOGGLE_STATE;
+
+/**
+  @par Data Structure Description:
+  Mode Structure pointed to by Simple Text Out protocol.
+**/
+typedef struct {
+  ///
+  /// The number of modes supported by QueryMode () and SetMode ().
+  ///
+  INT32   MaxMode;
+
+  //
+  // current settings
+  //
+
+  ///
+  /// The text mode of the output device(s).
+  ///
+  INT32   Mode;
+  ///
+  /// The current character output attribute.
+  ///
+  INT32   Attribute;
+  ///
+  /// The cursor's column.
+  ///
+  INT32   CursorColumn;
+  ///
+  /// The cursor's row.
+  ///
+  INT32   CursorRow;
+  ///
+  /// The cursor is currently visbile or not.
+  ///
+  BOOLEAN CursorVisible;
+} EFI_SIMPLE_TEXT_OUTPUT_MODE;
+
+
+typedef struct {
+        void*  Reset;
+
+        void*  OutputString;
+        void*  TestString;
+
+        void*  QueryMode;
+        void*  SetMode;
+        void*  SetAttribute;
+
+        void*  ClearScreen;
+        void*  SetCursorPosition;
+        void*  EnableCursor;
+
+         /* Pointer to SIMPLE_TEXT_OUTPUT_MODE data. */
+        EFI_SIMPLE_TEXT_OUTPUT_MODE* Mode;
+} EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL ;
+
+typedef struct {
+        void* Reset;
+        void* ReadKeyStrokeEx;
+        void* WaitForKeyEx;
+        void* SetState;
+        void* RegisterKeyNotify;
+        void* UnregisterKeyNotify;
+} EFI_SIMPLE_TEXT_EX_INPUT_PROTOCOL;
+
+/**
+  Block IO read only mode data and updated only via members of BlockIO
+**/
+typedef struct {
+  ///
+  /// The curent media Id. If the media changes, this value is changed.
+  ///
+  UINT32  MediaId;
+
+  ///
+  /// TRUE if the media is removable; otherwise, FALSE.
+  ///
+  BOOLEAN RemovableMedia;
+
+  ///
+  /// TRUE if there is a media currently present in the device;
+  /// othersise, FALSE. THis field shows the media present status
+  /// as of the most recent ReadBlocks() or WriteBlocks() call.
+  ///
+  BOOLEAN MediaPresent;
+
+  ///
+  /// TRUE if LBA 0 is the first block of a partition; otherwise
+  /// FALSE. For media with only one partition this would be TRUE.
+  ///
+  BOOLEAN LogicalPartition;
+
+  ///
+  /// TRUE if the media is marked read-only otherwise, FALSE.
+  /// This field shows the read-only status as of the most recent WriteBlocks () call.
+  ///
+  BOOLEAN ReadOnly;
+
+  ///
+  /// TRUE if the WriteBlock () function caches write data.
+  ///
+  BOOLEAN WriteCaching;
+
+  ///
+  /// The intrinsic block size of the device. If the media changes, then
+  /// this field is updated.
+  ///
+  UINT32  BlockSize;
+
+  ///
+  /// Supplies the alignment requirement for any buffer to read or write block(s).
+  ///
+  UINT32  IoAlign;
+
+  ///
+  /// The last logical block address on the device.
+  /// If the media changes, then this field is updated.
+  ///
+  EFI_LBA LastBlock;
+
+  ///
+  /// Only present if EFI_BLOCK_IO_PROTOCOL.Revision is greater than or equal to
+  /// EFI_BLOCK_IO_PROTOCOL_REVISION2. Returns the first LBA is aligned to
+  /// a physical block boundary.
+  ///
+  EFI_LBA LowestAlignedLba;
+
+  ///
+  /// Only present if EFI_BLOCK_IO_PROTOCOL.Revision is greater than or equal to
+  /// EFI_BLOCK_IO_PROTOCOL_REVISION2. Returns the number of logical blocks
+  /// per physical block.
+  ///
+  UINT32 LogicalBlocksPerPhysicalBlock;
+
+  ///
+  /// Only present if EFI_BLOCK_IO_PROTOCOL.Revision is greater than or equal to
+  /// EFI_BLOCK_IO_PROTOCOL_REVISION3. Returns the optimal transfer length
+  /// granularity as a number of logical blocks.
+  ///
+  UINT32 OptimalTransferLengthGranularity;
+} EFI_BLOCK_IO_MEDIA;
+
+/*
+ * This protocol provides control over block devices.
+ */
+typedef struct {
+        /*
+         * The revision to which the block IO interface adheres. All future
+         * revisions must be backwards compatible. If a future version is not
+         * back wards compatible, it is not the same GUID.
+        */
+        UINT64              Revision;
+        /*
+         * Pointer to the EFI_BLOCK_IO_MEDIA data for this device.
+         */
+        EFI_BLOCK_IO_MEDIA  *Media;
+
+        void*               Reset;
+        void*               ReadBlocks;
+        void*               WriteBlocks;
+        void*               FlushBlocks;
+
+        /* This is extra data we add on top. This will be accessible by the
+         * functions above, as their first parameter is "*This". */
+        uint64_t device_id;
+
+        /* A file for openning the underlying device */
+        struct file *file;
+} EFI_BLOCK_IO_PROTOCOL;
+
+/*
+ * Enumeration of memory types introduced in UEFI. */
+/* TODO: There are similar definitions in efi.h. This one is taken from EDK-II
+ * */
+typedef enum {
+        EfiReservedMemoryType,
+        EfiLoaderCode,
+        EfiLoaderData,
+        EfiBootServicesCode,
+        EfiBootServicesData,
+        EfiRuntimeServicesCode,
+        EfiRuntimeServicesData,
+        EfiConventionalMemory,
+        EfiUnusableMemory,
+        EfiACPIReclaimMemory,
+        EfiACPIMemoryNVS,
+        EfiMemoryMappedIO,
+        EfiMemoryMappedIOPortSpace,
+        EfiPalCode,
+        EfiPersistentMemory,
+        EfiMaxMemoryType
+} EFI_MEMORY_TYPE;
+
+typedef enum {
+        /* Allocate any available range of pages that satisfies the request. */
+        AllocateAnyPages,
+
+        /* Allocate any available range of pages whose uppermost address is less 
+         * than or equal to a specified maximum address. */
+        AllocateMaxAddress,
+
+        /* Allocate pages at a specified address. */
+        AllocateAddress,
+
+        /* Maximum enumeration value that may be used for bounds checking. */
+        MaxAllocateType
+} EFI_ALLOCATE_TYPE;
+
+/**
+  This protocol can be used on any device handle to obtain generic path/location
+  information concerning the physical device or logical device. If the handle does
+  not logically map to a physical device, the handle may not necessarily support
+  the device path protocol. The device path describes the location of the device
+  the handle is for. The size of the Device Path can be determined from the structures
+  that make up the Device Path.
+**/
+typedef struct {
+        UINT8 Type;       /* 0x01 Hardware Device Path.
+                           * 0x02 ACPI Device Path.
+                           * 0x03 Messaging Device Path.
+                           * 0x04 Media Device Path.
+                           * 0x05 BIOS Boot Specification Device Path.
+                           * 0x7F End of Hardware Device Path. */
+
+        UINT8 SubType;    /* Varies by Type
+                           * 0xFF End Entire Device Path, or
+                           * 0x01 End This Instance of a Device Path and start a new
+                           * Device Path. */
+
+        UINT8 Length[2];  /* Specific Device Path data. Type and Sub-Type define
+                           * type of data. Size of data is included in Length. */
+
+        uint8_t data[];
+} EFI_DEVICE_PATH_PROTOCOL;
+
+ /* Can be used on any image handle to obtain information about the loaded image. */
+typedef struct {
+        UINT32            Revision;       /* Defines the revision of the EFI_LOADED_IMAGE_PROTOCOL structure.
+                                           * All future revisions will be backward compatible to the current revision. */
+        EFI_HANDLE        ParentHandle;   /* Parent image's image handle. NULL if the image is loaded directly from
+                                           * the firmware's boot manager. */
+        EFI_SYSTEM_TABLE  *SystemTable;   /* the image's EFI system table pointer. */
+
+        /* Source location of image */
+        EFI_HANDLE        DeviceHandle;   /* The device handle that the EFI Image was loaded from. */
+        EFI_DEVICE_PATH_PROTOCOL  *FilePath;  /* A pointer to the file path portion specific to DeviceHandle
+                                               * that the EFI Image was loaded from. */
+        VOID              *Reserved;      /* Reserved. DO NOT USE. */
+
+        /* Images load options */
+        UINT32            LoadOptionsSize;/* The size in bytes of LoadOptions. */
+        VOID              *LoadOptions;   /* A pointer to the image's binary load options. */
+
+        /* Location of where image was loaded */
+        VOID              *ImageBase;     /* The base address at which the image was loaded. */
+        UINT64            ImageSize;      /* The size in bytes of the loaded image. */
+        EFI_MEMORY_TYPE   ImageCodeType;  /* The memory type that the code sections were loaded as. */
+        EFI_MEMORY_TYPE   ImageDataType;  /* The memory type that the data sections were loaded as. */
+        EFI_IMAGE_UNLOAD  Unload;
+} EFI_LOADED_IMAGE_PROTOCOL;
+
+typedef struct {
+  UINT32            RedMask;
+  UINT32            GreenMask;
+  UINT32            BlueMask;
+  UINT32            ReservedMask;
+} EFI_PIXEL_BITMASK;
+
+typedef enum {
+  PixelRedGreenBlueReserved8BitPerColor,
+  PixelBlueGreenRedReserved8BitPerColor,
+  PixelBitMask,
+  PixelBltOnly,
+  PixelFormatMax
+} EFI_GRAPHICS_PIXEL_FORMAT;
+
+
+typedef struct {
+  UINT32                     Version;
+  UINT32                     HorizontalResolution;
+  UINT32                     VerticalResolution;
+  EFI_GRAPHICS_PIXEL_FORMAT  PixelFormat;
+  EFI_PIXEL_BITMASK          PixelInformation;
+  UINT32                     PixelsPerScanLine;
+} EFI_GRAPHICS_OUTPUT_MODE_INFORMATION;
+
+typedef struct {
+  UINT32                                 MaxMode;
+  UINT32                                 Mode;
+  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION   *Info;
+  UINTN                                  SizeOfInfo;
+  EFI_PHYSICAL_ADDRESS                   FrameBufferBase;
+  UINTN                                  FrameBufferSize;
+} EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE;
+
+typedef struct {
+  void* QueryMode;
+  void* SetMode;
+  void* Blt;
+  EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE        *Mode;
+}EFI_GRAPHICS_OUTPUT_PROTOCOL ;
+
 #endif /* _LINUX_EFI_H */
