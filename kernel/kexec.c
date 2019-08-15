@@ -2854,13 +2854,39 @@ void launch_efi_app(EFI_APP_ENTRY efiApp, efi_system_table_t *systab)
         efiApp( ImageHandle, remapped_systab );
 }
 
+void efi_remove_NX_bit( unsigned long addr )
+{
+        struct mm_struct *mm  = current->mm;
+	pgd_t *pgd;
+	unsigned long *p4d;
+
+        /* We actually have 4 levels of memory, so pgd and p4d are the same */
+	pgd = pgd_offset(mm, addr);
+	p4d = (unsigned long*)p4d_offset(pgd, addr);
+        DebugMSG( "pgd = 0x%lx", pgd->pgd );
+        DebugMSG( "p4d = 0x%lx", *p4d );
+        pgd->pgd &= ~_PAGE_NX;
+        DebugMSG( "pgd = 0x%lx", pgd->pgd );
+        DebugMSG( "p4d = 0x%lx", *p4d );
+
+        /* TODO: flush TLB !!!! */
+}
+
 void kimage_run_pe(struct kimage *image)
 {
         EFI_APP_ENTRY efiApp = (EFI_APP_ENTRY)image->raw_image_start;
 
+        /* This is a hack to remove the NX bit from P4D. Otherwise we will get a
+         * fault when fetching the very first instruction at the entry_point.
+         * While it seems ill advised to turn off the NX bit, recall that we are
+         * actually loading arbitrary code (Windows loader) and executing it in
+         * kernel mode. That code is then taking over the machine. */
+        efi_remove_NX_bit( (unsigned long)image->raw_image_start );
+
         /* Print the beginning of the entry point. You can compare this to the
          * objdump output of the EFI app you're running. */
         DumpBuffer( "Entry point:", (uint8_t*) image->raw_image_start, 64 );
+
 
         efi_register_ram_as_available();
         efi_mark_reserved_areas();
